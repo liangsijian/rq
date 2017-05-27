@@ -147,7 +147,10 @@ class Worker(object):
 
         self.job_class = backend_class(self, 'job_class', override=job_class)
         self.queue_class = backend_class(self, 'queue_class', override=queue_class)
-
+        # queues可以为下面3中类型
+        # 字符串 表示在redis中的queue_id
+        # Queue 对象
+        # Queue 列表
         queues = [self.queue_class(name=q,
                                    connection=connection,
                                    job_class=self.job_class)
@@ -449,7 +452,9 @@ class Worker(object):
             while True:
                 try:
                     self.check_for_suspension(burst)
-
+                    # 每隔1小时清空监听队里中的 registry
+                    # ISSUE:会不会发生竞争情况，导致其他worker将新的job放到registry之后，立即就
+                    # 被清空除掉
                     if self.should_run_maintenance_tasks:
                         self.clean_registries()
 
@@ -457,7 +462,7 @@ class Worker(object):
                         self.log.info('Stopping on request')
                         break
 
-                    timeout = None if burst else max(1, self.default_worker_ttl - 60)
+                    timeout = None if burst else max(1, self.default_worker_ttl - 60) # 减60防止 worker key 超时
 
                     result = self.dequeue_job_and_maintain_ttl(timeout)
                     if result is None:

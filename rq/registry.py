@@ -5,6 +5,10 @@ from .job import Job, JobStatus
 from .queue import FailedQueue
 from .utils import backend_class, current_timestamp
 
+# rq:registry:{key}
+# rq:wip:{key}
+# rq:finished:{key}
+# rq:deferred:{key}
 
 class BaseRegistry(object):
     """

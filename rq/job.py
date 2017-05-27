@@ -304,7 +304,7 @@ class Job(object):
         self._args = UNEVALUATED
         self._kwargs = UNEVALUATED
         self.description = None
-        self.origin = None
+        self.origin = None # 归属的队列名
         self.enqueued_at = None
         self.started_at = None
         self.ended_at = None
@@ -624,7 +624,7 @@ class Job(object):
         and adds the job to DeferredJobRegistry.
         """
         from .registry import DeferredJobRegistry
-
+        # 将自己的job_id添加到 score set rq:deferred:{queue_id} 中
         registry = DeferredJobRegistry(self.origin,
                                        connection=self.connection,
                                        job_class=self.__class__)

@@ -85,6 +85,7 @@ class Queue(object):
 
     def empty(self):
         """Removes all messages on the queue."""
+        # 脚本功能主要是从队列中移除Job，并将Job从redis中删除
         script = b"""
             local prefix = "rq:job:"
             local q = KEYS[1]
@@ -113,10 +114,10 @@ class Queue(object):
         try:
             job = self.job_class.fetch(job_id, connection=self.connection)
         except NoSuchJobError:
-            self.remove(job_id)
+            self.remove(job_id) # 为发现job则从队列中移除
         else:
             if job.origin == self.name or (job.is_failed and self == get_failed_queue(connection=self.connection)):
-                return job
+                return job # job 属于本队列 或者 失败job
 
     def get_job_ids(self, offset=0, length=-1):
         """Returns a slice of job IDs in the queue."""
@@ -162,6 +163,10 @@ class Queue(object):
         """Removes all "dead" jobs from the queue by cycling through it, while
         guaranteeing FIFO semantics.
         """
+        # 移除队列中不存在于redis中的job：
+        # 1. 重命名队列q1为q2
+        # 2. 循环队列q2中的job
+        # 3. 如果job.id存在与redis，放入原来队列q1，否则丢弃
         COMPACT_QUEUE = 'rq:queue:_compact:{0}'.format(uuid.uuid4())
 
         self.connection.rename(self.key, COMPACT_QUEUE)
@@ -239,7 +244,7 @@ class Queue(object):
         job.perform()
         job.set_status(JobStatus.FINISHED)
         job.save(include_meta=False)
-        job.cleanup(DEFAULT_RESULT_TTL)
+        job.cleanup(DEFAULT_RESULT_TTL) # 运行结束，job 默认 expire 为 500 秒
         return job
 
     def enqueue(self, f, *args, **kwargs):
@@ -289,7 +294,7 @@ class Queue(object):
         pipe = pipeline if pipeline is not None else self.connection._pipeline()
 
         # Add Queue key set
-        pipe.sadd(self.redis_queues_keys, self.key)
+        pipe.sadd(self.redis_queues_keys, self.key) # 每次有任务入队列，都对将queue key添加到 rq:queues
         job.set_status(JobStatus.QUEUED, pipeline=pipe)
 
         job.origin = self.name
@@ -297,6 +302,7 @@ class Queue(object):
 
         if job.timeout is None:
             job.timeout = self.DEFAULT_TIMEOUT
+        # 持久化到 redis
         job.save(pipeline=pipe)
 
         if self._async:

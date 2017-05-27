@@ -51,8 +51,8 @@ class Local(object):
     __slots__ = ('__storage__', '__ident_func__')
 
     def __init__(self):
-        object.__setattr__(self, '__storage__', {})
-        object.__setattr__(self, '__ident_func__', get_ident)
+        object.__setattr__(self, '__storage__', {}) # 存储当前线程的上下文变量，为嵌套字典 storage["线程id"]["变量内容"]
+        object.__setattr__(self, '__ident_func__', get_ident) # 得到当前线程的标识
 
     def __iter__(self):
         return iter(self.__storage__.items())
@@ -62,7 +62,7 @@ class Local(object):
         return LocalProxy(self, proxy)
 
     def __release_local__(self):
-        self.__storage__.pop(self.__ident_func__(), None)
+        self.__storage__.pop(self.__ident_func__(), None) # 释放当前线程的存储内容
 
     def __getattr__(self, name):
         try:
@@ -76,7 +76,7 @@ class Local(object):
         try:
             storage[ident][name] = value
         except KeyError:
-            storage[ident] = {name: value}
+            storage[ident] = {name: value}  # 出现异常说明 name 不在当前线程中保存
 
     def __delattr__(self, name):
         try:
@@ -123,6 +123,8 @@ class LocalStack(object):
 
     def _set__ident_func__(self, value):  # noqa
         object.__setattr__(self._local, '__ident_func__', value)
+
+    # 对 LocalStack.__ident_func__ 的访问与赋值操作都会转发到 _get__ident_func 和 _set__ident_func
     __ident_func__ = property(_get__ident_func__, _set__ident_func__)
     del _get__ident_func__, _set__ident_func__
 
@@ -268,7 +270,7 @@ class LocalProxy(object):
     __slots__ = ('__local', '__dict__', '__name__')
 
     def __init__(self, local, name=None):
-        object.__setattr__(self, '_LocalProxy__local', local)
+        object.__setattr__(self, '_LocalProxy__local', local) # class LocalProxy 含有私有变量 __local
         object.__setattr__(self, '__name__', name)
 
     def _get_current_object(self):
@@ -276,10 +278,10 @@ class LocalProxy(object):
         object behind the proxy at a time for performance reasons or because
         you want to pass the object into a different context.
         """
-        if not hasattr(self.__local, '__release_local__'):
+        if not hasattr(self.__local, '__release_local__'): # self.__local 是 class LocalStack
             return self.__local()
         try:
-            return getattr(self.__local, self.__name__)
+            return getattr(self.__local, self.__name__) # self.__local 是 class Local
         except AttributeError:
             raise RuntimeError('no object bound to %s' % self.__name__)
 
