@@ -85,7 +85,7 @@ class Queue(object):
 
     def empty(self):
         """Removes all messages on the queue."""
-        # 脚本功能主要是从队列中移除Job，并将Job从redis中删除
+        # 脚本功能主要是从队列queue中移除Job_id，并将Job_id对应的hash从redis中删除
         script = b"""
             local prefix = "rq:job:"
             local q = KEYS[1]
@@ -508,6 +508,7 @@ class FailedQueue(Queue):
 
     def requeue(self, job_id):
         """Requeues the job with the given job ID."""
+        # 从Fail队列中移出job并放到worker queue中
         try:
             job = self.job_class.fetch(job_id, connection=self.connection)
         except NoSuchJobError:

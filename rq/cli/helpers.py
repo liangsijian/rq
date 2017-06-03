@@ -135,7 +135,7 @@ def show_queues(queues, raw, by_queue, queue_class, worker_class):
 def show_workers(queues, raw, by_queue, queue_class, worker_class):
     if queues:
         qs = list(map(queue_class, queues))
-
+        # worker 监听的队列里面有一个是需要查看的队列
         def any_matching_queue(worker):
             def queue_matches(q):
                 return q in qs
@@ -144,6 +144,7 @@ def show_workers(queues, raw, by_queue, queue_class, worker_class):
         # Filter out workers that don't match the queue filter
         ws = [w for w in worker_class.all() if any_matching_queue(w)]
 
+        # 只显示worker中在queues集合里面的队列
         def filter_queues(queue_names):
             return [qname for qname in queue_names if queue_class(qname) in qs]
 

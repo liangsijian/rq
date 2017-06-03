@@ -672,7 +672,7 @@ class Worker(object):
                     # a WatchError is thrown by execute()
                     pipeline.watch(job.dependents_key)
                     # enqueue_dependents calls multi() on the pipeline!
-                    # 将依赖该job的其他任务放入工作队列
+                    # 将依赖于该job的job1、job2...放入队列中
                     queue.enqueue_dependents(job, pipeline=pipeline)
 
                     self.set_current_job_id(None, pipeline=pipeline)
@@ -691,7 +691,7 @@ class Worker(object):
                         finished_job_registry.add(job, result_ttl, pipeline)
 
                     job.cleanup(result_ttl, pipeline=pipeline,
-                                remove_from_queue=False)
+                                remove_from_queue=False) # 已经从队列中移除
                     started_job_registry.remove(job, pipeline=pipeline)
 
                     pipeline.execute()

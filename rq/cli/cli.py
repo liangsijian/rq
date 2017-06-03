@@ -139,6 +139,7 @@ def requeue(cli_config, all, job_class, job_ids, **options):
 @click.option('--raw', '-r', is_flag=True, help='Print only the raw numbers, no bar charts')
 @click.option('--only-queues', '-Q', is_flag=True, help='Show only queue info')
 @click.option('--only-workers', '-W', is_flag=True, help='Show only worker info')
+# True 显示每个worker监听的队列情况, False 显示每个queue上监听的所有worker
 @click.option('--by-queue', '-R', is_flag=True, help='Shows workers by queue')
 @click.argument('queues', nargs=-1)
 @pass_cli_config
