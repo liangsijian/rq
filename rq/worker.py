@@ -172,7 +172,7 @@ class Worker(object):
         self._state = 'starting'
         self._is_horse = False
         self._horse_pid = 0
-        self._stop_requested = False
+        self._stop_requested = False # 运行job的时候被关闭
         self.log = logger
         self.failed_queue = get_failed_queue(connection=self.connection,
                                              job_class=self.job_class)
@@ -453,8 +453,8 @@ class Worker(object):
                 try:
                     self.check_for_suspension(burst)
                     # 每隔1小时清空监听队里中的 registry
-                    # ISSUE:会不会发生竞争情况，导致其他worker将新的job放到registry之后，立即就
-                    # 被清空除掉
+                    # ISSUE:其他worker将新的job放到registry之后，是否立即就被清空
+                    # RESOLUTE: registry中的数据不影响job的工作，只是记录超时情况
                     if self.should_run_maintenance_tasks:
                         self.clean_registries()
 
@@ -672,16 +672,19 @@ class Worker(object):
                     # a WatchError is thrown by execute()
                     pipeline.watch(job.dependents_key)
                     # enqueue_dependents calls multi() on the pipeline!
+                    # 将依赖该job的其他任务放入工作队列
                     queue.enqueue_dependents(job, pipeline=pipeline)
 
                     self.set_current_job_id(None, pipeline=pipeline)
 
+                    # 使用 job.result_tt 设置结果保存的时间
                     result_ttl = job.get_result_ttl(self.default_result_ttl)
                     if result_ttl != 0:
                         job.set_status(JobStatus.FINISHED, pipeline=pipeline)
                         # Don't clobber the user's meta dictionary!
                         job.save(pipeline=pipeline, include_meta=False)
 
+                        # 同时设置finished registry状态集
                         finished_job_registry = FinishedJobRegistry(job.origin,
                                                                     self.connection,
                                                                     job_class=self.job_class)
@@ -709,6 +712,8 @@ class Worker(object):
                                                   job_class=self.job_class)
 
         try:
+            # with 语句配合death_penalty_class控制job执行用时,任务执行时间超过timeout
+            # 会触发异常
             with self.death_penalty_class(job.timeout or self.queue_class.DEFAULT_TIMEOUT):
                 rv = job.perform()
 

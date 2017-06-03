@@ -318,6 +318,7 @@ class TestWorker(RQTestCase):
         self.assertIn(job.get_id().encode('utf-8'), self.testconn.lrange(q.key, 0, -1))
         w.work(burst=True)
         self.assertNotEqual(self.testconn._ttl(job.key), 0)
+        # job执行完毕会从queue中去除
         self.assertNotIn(job.get_id().encode('utf-8'), self.testconn.lrange(q.key, 0, -1))
 
         # Job with -1 result_ttl don't expire
@@ -734,6 +735,7 @@ class WorkerShutdownTestCase(TimeoutTestCase, RQTestCase):
         sentinel_file = '/tmp/.rq_sentinel_warm'
         fooq.enqueue(create_file_after_timeout, sentinel_file, 2)
         self.assertFalse(w._stop_requested)
+        # 任务正在执行的时候，worker收到关闭请求，执行完job退出
         p = Process(target=kill_worker, args=(os.getpid(), False))
         p.start()
 
@@ -755,6 +757,7 @@ class WorkerShutdownTestCase(TimeoutTestCase, RQTestCase):
         sentinel_file = '/tmp/.rq_sentinel_cold'
         fooq.enqueue(create_file_after_timeout, sentinel_file, 2)
         self.assertFalse(w._stop_requested)
+        # 发送两次kill信号，job在执行的时候worker被强制退出
         p = Process(target=kill_worker, args=(os.getpid(), True))
         p.start()
 

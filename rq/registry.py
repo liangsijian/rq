@@ -54,6 +54,7 @@ class BaseRegistry(object):
         specified as seconds since the Unix epoch. timestamp defaults to call
         time if unspecified.
         """
+        # ttl小于0的job不会过时
         score = timestamp if timestamp is not None else current_timestamp()
         return [as_text(job_id) for job_id in
                 self.connection.zrangebyscore(self.key, 0, score)]
